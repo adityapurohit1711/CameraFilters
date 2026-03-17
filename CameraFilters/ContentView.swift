@@ -7,28 +7,74 @@ struct ContentView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            if let image = camera.filteredImage {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .ignoresSafeArea()
-            } else {
+            switch camera.permissionStatus {
+            case .denied:
+                PermissionDeniedView()
+            case .notDetermined:
                 VStack(spacing: 12) {
                     ProgressView()
                         .tint(.white)
-                    Text("Starting camera…")
+                    Text("Requesting camera access…")
                         .foregroundStyle(.white.opacity(0.6))
                         .font(.caption)
                 }
+            case .granted:
+                if let image = camera.filteredImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .ignoresSafeArea()
+                } else {
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .tint(.white)
+                        Text("Starting camera…")
+                            .foregroundStyle(.white.opacity(0.6))
+                            .font(.caption)
+                    }
+                }
             }
 
-            VStack {
-                Spacer()
-                FilterBar(selectedFilter: $camera.currentFilter)
-                    .padding(.bottom, 44)
+            if camera.permissionStatus == .granted {
+                VStack {
+                    Spacer()
+                    FilterBar(selectedFilter: $camera.currentFilter)
+                        .padding(.bottom, 44)
+                }
             }
         }
         .statusBar(hidden: true)
+    }
+}
+
+// MARK: - Permission denied view
+
+private struct PermissionDeniedView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "camera.slash.fill")
+                .font(.system(size: 52))
+                .foregroundStyle(.white.opacity(0.8))
+            Text("Camera Access Required")
+                .font(.title3.bold())
+                .foregroundStyle(.white)
+            Text("Please enable camera access in\nSettings to use this app.")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            .font(.subheadline.bold())
+            .foregroundStyle(.black)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 10)
+            .background(Capsule().fill(.white))
+            .padding(.top, 8)
+        }
+        .padding(32)
     }
 }
 

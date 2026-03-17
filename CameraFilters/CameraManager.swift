@@ -2,10 +2,15 @@ import AVFoundation
 import CoreImage
 import UIKit
 
+enum CameraPermissionStatus {
+    case notDetermined, granted, denied
+}
+
 class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleBufferDelegate {
 
     @Published var filteredImage: UIImage?
     @Published var currentFilter: FilterType = .original
+    @Published var permissionStatus: CameraPermissionStatus = .notDetermined
 
     private let session = AVCaptureSession()
     private let context = CIContext()
@@ -13,7 +18,24 @@ class CameraManager: NSObject, ObservableObject, AVCaptureVideoDataOutputSampleB
 
     override init() {
         super.init()
-        setupSession()
+        checkPermissionAndSetup()
+    }
+
+    func checkPermissionAndSetup() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            DispatchQueue.main.async { self.permissionStatus = .granted }
+            setupSession()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                DispatchQueue.main.async {
+                    self?.permissionStatus = granted ? .granted : .denied
+                }
+                if granted { self?.setupSession() }
+            }
+        default:
+            DispatchQueue.main.async { self.permissionStatus = .denied }
+        }
     }
 
     private func setupSession() {
